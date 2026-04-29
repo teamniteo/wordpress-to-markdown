@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.idea/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Per-project source exports and converted output — never commit user content
+projects/*/source/
+projects/*/output/
+
+# Niteo's own migrations — kept local
+projects/dejanmurko.si/
+projects/gcpblog.org/
+projects/niteo-blog/
