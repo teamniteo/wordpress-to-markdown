@@ -31,13 +31,13 @@ projects/my-site/source/
 
 ## Step 3 — Hand off to Claude Code
 
-Open the unzipped folder in Claude Code (`claude` in the folder, or via the Claude Code app) and paste this:
+Open the unzipped folder in Claude Code (`claude` in the folder, or via the Claude Code app) and paste this, replacing `my-site` with your folder name from Step 2:
 
 ```
-Set up a new conversion project called my-site. Copy projects/example/config.py into it, then look at the WXR in projects/my-site/source/ and help me fill in the authors and AUTHOR_BY_LOGIN map by reading the <dc:creator> values. Set SOURCE_URL_PATTERN to match my old WordPress domain. Then install the Python dependencies (pip install -r requirements.txt) and run python convert.py my-site. Show me any warnings about unresolved images at the end.
+New conversion - my-site
 ```
 
-Claude Code will ask you a few questions (your old domain, who each author is), fill in the config, and run the conversion. Output lands in `projects/my-site/output/`:
+Claude Code will read the project's `CLAUDE.md`, ask you a few questions (your old domain, who each author is), fill in the config, and run the conversion. Output lands in `projects/my-site/output/`:
 
 ```
 output/
@@ -51,7 +51,7 @@ output/
 After the first run, the script logs warnings for images it couldn't auto-name. Paste:
 
 ```
-Look at the warnings about missing image descriptions. For each one, read the post it appears in and suggest a short, descriptive filename slug. Add them to CONTENT_DESCRIPTIONS in projects/my-site/config.py, then re-run python rename_images.py my-site.
+Tidy image filenames - my-site
 ```
 
 ## Output format
