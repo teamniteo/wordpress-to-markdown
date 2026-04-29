@@ -34,12 +34,16 @@ If you don't live in a terminal, this is the easy path. You'll need [Claude Code
 4. Open the unzipped folder in Claude Code (`claude` in the folder, or open it via the Claude Code app).
 5. Paste this prompt:
 
-   > Set up a new conversion project called `my-site`. Copy `projects/example/config.py` into it, then look at the WXR in `projects/my-site/source/` and help me fill in the authors and `AUTHOR_BY_LOGIN` map by reading the `<dc:creator>` values. Set `SOURCE_URL_PATTERN` to match my old WordPress domain. Then install the Python dependencies (`pip install -r requirements.txt`) and run `python convert.py my-site`. Show me any warnings about unresolved images at the end.
+   ```
+   Set up a new conversion project called my-site. Copy projects/example/config.py into it, then look at the WXR in projects/my-site/source/ and help me fill in the authors and AUTHOR_BY_LOGIN map by reading the <dc:creator> values. Set SOURCE_URL_PATTERN to match my old WordPress domain. Then install the Python dependencies (pip install -r requirements.txt) and run python convert.py my-site. Show me any warnings about unresolved images at the end.
+   ```
 
 6. Claude Code will ask you a couple of questions (your old domain, who each author is), then run the conversion. The output lands in `projects/my-site/output/`.
 7. _(Optional, but worth it)_ After the first run, paste:
 
-   > Look at the warnings about missing image descriptions. For each one, read the post it appears in and suggest a short, descriptive filename slug. Add them to `CONTENT_DESCRIPTIONS` in `projects/my-site/config.py`, then re-run `python rename_images.py my-site`.
+   ```
+   Look at the warnings about missing image descriptions. For each one, read the post it appears in and suggest a short, descriptive filename slug. Add them to CONTENT_DESCRIPTIONS in projects/my-site/config.py, then re-run python rename_images.py my-site.
+   ```
 
 That's the whole loop. The CLI quick-start below is the same thing, just typed out by hand.
 
