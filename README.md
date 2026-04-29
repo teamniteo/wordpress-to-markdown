@@ -29,7 +29,7 @@ The Python scripts run standalone. Claude Code is not a hard dependency — it j
 If you don't live in a terminal, this is the easy path. You'll need [Claude Code](https://claude.com/claude-code) installed and your WordPress export ready to drop on disk.
 
 1. Download this repo as a zip from GitHub (green **Code** button → **Download ZIP**) and unzip it somewhere — Desktop is fine.
-2. Export your WordPress site (**Tools → Export → All content** in WP admin) and save the `.xml` file. Also download your `wp-content/uploads/` folder via SFTP or your host's file manager.
+2. Export your WordPress site (**Tools → Export → All content** in WP admin) and save the `.xml` file. For the media, install the [Export Media Library](https://wordpress.org/plugins/export-media-library/) plugin and use **Media → Export → Single folder with all files** to grab everything as a flat zip.
 3. Make a new folder inside `projects/` named after your site (e.g. `projects/my-site`). Inside it, create a folder called `source/` and put both the `.xml` file and your uploads folder there.
 4. Open the unzipped folder in Claude Code (`claude` in the folder, or open it via the Claude Code app).
 5. Paste this prompt:
@@ -71,7 +71,7 @@ output/
 
 In WP admin: **Tools → Export → All content → Download Export File**.
 
-You also need the matching media. The easiest way is to download `wp-content/uploads/` over SFTP and flatten it into a single folder (the script doesn't care about year/month subfolders — it indexes by filename).
+You also need the matching media. The easiest way is the [Export Media Library](https://wordpress.org/plugins/export-media-library/) plugin — install it, then **Media → Export** and choose "Single folder with all files" to get a flat zip you can drop straight into `source/`. If you'd rather not install a plugin, download `wp-content/uploads/` over SFTP and flatten it into a single folder (the script doesn't care about year/month subfolders — it indexes by filename).
 
 Drop both into `projects/<your-site>/source/`:
 
