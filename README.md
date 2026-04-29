@@ -8,7 +8,7 @@ This is the script [Niteo](https://niteo.co) used to migrate every one of its bl
 
 - [Claude Code](https://claude.com/claude-code) installed
 - A WordPress site you can log into as admin
-- Python 3.10+ on your machine (Claude Code will install dependencies for you)
+- Python 3.8+ on your machine (Claude Code will install dependencies for you)
 
 ## Step 1 — Get your WordPress content
 

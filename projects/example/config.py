@@ -44,6 +44,25 @@ SOURCE_URL_PATTERN = (
     r"https?://[^\"'>\s]*example\.com[^\"'>\s]*\.(?:jpe?g|png|gif|webp|avif)"
 )
 
+# Fallback category for posts that have no <category domain="category"> entries.
+CATEGORY_FALLBACK = "General"
+
+# Per-project HTML preprocessing filters. Each entry is a regex.
+#
+# PREPROCESS_DROP_HREFS: any <a> whose href matches is removed (along with its
+#   enclosing <figure>, if any). Useful for stripping CTA banners.
+# PREPROCESS_DROP_CLASSES: any <div> whose class string matches is removed.
+#   Useful for stripping accidentally-pasted UI fragments.
+#
+# Both default to empty. Be careful with class regexes — `flex` will match
+# `inline-flex`, `flex-row`, etc.
+PREPROCESS_DROP_HREFS = (
+    # r"subscribe-modal",
+)
+PREPROCESS_DROP_CLASSES = (
+    # r"^(mt-\d+|gap-\d+)$",
+)
+
 # Per-image rename hints used by rename_images.py.
 # Keys are (original_filename, post_slug). Values become the descriptive
 # suffix in the renamed file: <slug>-<description>.<ext>

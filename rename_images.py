@@ -5,17 +5,23 @@ Usage: python rename_images.py <project_name>
 
 Operates on projects/<project_name>/output/posts and .../output/images.
 Per-project rename map (CONTENT_DESCRIPTIONS) lives in projects/<project_name>/config.py.
+
+Re-runnable: a sidecar `output/.rename_map.json` records each renamed file's
+*original* filename, so subsequent runs can resolve current markdown filenames
+back to their CONTENT_DESCRIPTIONS keys after the user adds entries.
 """
 
 import argparse
 import importlib.util
-import os
+import json
 import re
 import shutil
 import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
+
+RENAME_MAP_FILE = ".rename_map.json"
 
 
 def load_project(name):
@@ -33,9 +39,28 @@ def load_project(name):
     return project_dir, config
 
 
+def _load_rename_map(output_dir):
+    """Load `current_filename -> original_filename` from sidecar, if any."""
+    path = output_dir / RENAME_MAP_FILE
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_rename_map(output_dir, mapping):
+    path = output_dir / RENAME_MAP_FILE
+    path.write_text(
+        json.dumps(mapping, indent=2, sort_keys=True), encoding="utf-8"
+    )
+
+
 def rename_images(project_dir, config):
-    posts_dir = project_dir / "output" / "posts"
-    images_dir = project_dir / "output" / "images"
+    output_dir = project_dir / "output"
+    posts_dir = output_dir / "posts"
+    images_dir = output_dir / "images"
 
     if not posts_dir.is_dir():
         sys.exit(f"Missing posts dir: {posts_dir}. Run convert.py first.")
@@ -44,83 +69,100 @@ def rename_images(project_dir, config):
 
     content_descriptions = config.CONTENT_DESCRIPTIONS
 
-    post_renames = {}  # (slug, old_filename) -> new_filename
-    unmapped_counter = {}  # slug -> running int for `-image-N` suffix
+    # current_filename_in_md -> original_filename (from previous run)
+    existing = _load_rename_map(output_dir)
 
-    for fname in sorted(os.listdir(posts_dir)):
-        if not fname.endswith(".md"):
-            continue
-        slug = fname[:-3]
-        filepath = posts_dir / fname
-        text = filepath.read_text()
+    def to_original(current):
+        return existing.get(current, current)
+
+    # (slug, current_filename) -> new_filename
+    post_renames = {}
+    # current_filename -> new_filename, deduped across posts so we copy once
+    file_renames = {}
+    unmapped_counter = {}
+
+    md_files = sorted(posts_dir.glob("*.md"))
+
+    for filepath in md_files:
+        slug = filepath.stem
+        text = filepath.read_text(encoding="utf-8")
 
         # Featured image
         m = re.search(r'featuredImage: "/images/blog/(.+?)"', text)
         if m:
-            old = m.group(1)
-            ext = os.path.splitext(old)[1]
+            current = m.group(1)
+            ext = Path(current).suffix
             new = f"{slug}-cover{ext}"
-            post_renames[(slug, old)] = new
+            post_renames[(slug, current)] = new
+            file_renames[current] = new
 
         # Content images
         for m in re.finditer(r"!\[([^\]]*)\]\(/images/blog/(.+?)\)", text):
-            old = m.group(2)
-            ext = os.path.splitext(old)[1]
-            key = (slug, old)
+            current = m.group(2)
+            ext = Path(current).suffix
+            key = (slug, current)
             if key in post_renames:
-                continue  # same file referenced multiple times in one post
-            desc = content_descriptions.get((old, slug))
+                continue
+            original = to_original(current)
+            desc = content_descriptions.get((original, slug))
             if desc:
                 new = f"{slug}-{desc}{ext}"
             else:
-                print(f"WARNING: no description for content image {old} in {slug}")
+                print(
+                    f"WARNING: no description for content image {original} in {slug}"
+                )
                 unmapped_counter[slug] = unmapped_counter.get(slug, 0) + 1
                 new = f"{slug}-image-{unmapped_counter[slug]}{ext}"
             post_renames[key] = new
+            file_renames.setdefault(current, new)
 
-    # Copy files with new names
-    copied = set()
-    for (slug, old), new in sorted(post_renames.items()):
-        src = images_dir / old
+    # Move files to their new names. shutil.move handles same-name no-ops on
+    # most platforms; we guard explicitly to keep behavior portable.
+    moved = 0
+    for current, new in sorted(file_renames.items()):
+        src = images_dir / current
         dst = images_dir / new
-        if src.exists() and new not in copied:
-            shutil.copy2(src, dst)
-            copied.add(new)
-            print(f"  {old} -> {new}")
+        if current == new:
+            continue
+        if not src.exists():
+            # File was already renamed in a previous run, or never copied.
+            continue
+        if dst.exists():
+            src.unlink()
+        else:
+            shutil.move(str(src), str(dst))
+            moved += 1
+        print(f"  {current} -> {new}")
 
     # Update markdown files
-    for fname in sorted(os.listdir(posts_dir)):
-        if not fname.endswith(".md"):
-            continue
-        slug = fname[:-3]
-        filepath = posts_dir / fname
-        text = filepath.read_text()
-        original = text
+    for filepath in md_files:
+        slug = filepath.stem
+        text = filepath.read_text(encoding="utf-8")
+        original_text = text
 
-        for (s, old), new in post_renames.items():
-            if s != slug:
+        for (s, current), new in post_renames.items():
+            if s != slug or current == new:
                 continue
-            text = text.replace(f"/images/blog/{old}", f"/images/blog/{new}")
+            text = text.replace(f"/images/blog/{current}", f"/images/blog/{new}")
 
-        if text != original:
-            filepath.write_text(text)
+        if text != original_text:
+            filepath.write_text(text, encoding="utf-8")
 
-    # Remove old files that have been renamed
-    old_files = set()
-    new_files = set()
-    for (slug, old), new in post_renames.items():
-        old_files.add(old)
-        new_files.add(new)
-
-    for old in old_files - new_files:
-        path = images_dir / old
-        if path.exists():
-            path.unlink()
-            print(f"  Removed: {old}")
+    # Persist new -> original mapping so future runs can resolve back.
+    new_map = {}
+    for current, new in file_renames.items():
+        original = existing.get(current, current)
+        new_map[new] = original
+    # Preserve entries for files that weren't touched this run.
+    referenced_now = set(file_renames.values()) | set(file_renames.keys())
+    for current, original in existing.items():
+        if current not in referenced_now:
+            new_map.setdefault(current, original)
+    _save_rename_map(output_dir, new_map)
 
     print(
-        f"\nDone. {len(copied)} images renamed, "
-        f"{len(old_files - new_files)} old files removed."
+        f"\nDone. {moved} files renamed; "
+        f"{len(file_renames)} total references mapped."
     )
     print(f"Total images now: {len(list(images_dir.iterdir()))}")
 
