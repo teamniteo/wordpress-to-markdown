@@ -75,63 +75,77 @@ def rename_images(project_dir, config):
     def to_original(current):
         return existing.get(current, current)
 
-    # (slug, current_filename) -> new_filename
-    post_renames = {}
-    # current_filename -> new_filename, deduped across posts so we copy once
-    file_renames = {}
-    unmapped_counter = {}
-
     md_files = sorted(posts_dir.glob("*.md"))
 
+    # Pass 1: scan every post and group references by current filename so we
+    # can detect images shared across multiple posts.
+    # current -> list of (slug, kind) where kind is "featured" | "content"
+    usage = {}
     for filepath in md_files:
         slug = filepath.stem
         text = filepath.read_text(encoding="utf-8")
 
-        # Featured image
         m = re.search(r'featuredImage: "/images/blog/(.+?)"', text)
         if m:
-            current = m.group(1)
-            ext = Path(current).suffix
-            new = f"{slug}-cover{ext}"
-            post_renames[(slug, current)] = new
-            file_renames[current] = new
+            usage.setdefault(m.group(1), []).append((slug, "featured"))
 
-        # Content images
         for m in re.finditer(r"!\[([^\]]*)\]\(/images/blog/(.+?)\)", text):
-            current = m.group(2)
-            ext = Path(current).suffix
+            usage.setdefault(m.group(2), []).append((slug, "content"))
+
+    # Pass 2: pick the new filename for each source.
+    #   - Shared (used by 2+ distinct posts): keep the original WP filename so
+    #     every post references a single physical file. Saves disk and avoids
+    #     stale copies when posts evolve independently.
+    #   - Single-owner: slug-prefixed (`<slug>-cover.ext` or
+    #     `<slug>-<description>.ext` / `<slug>-image-N.ext`).
+    post_renames = {}  # (slug, current) -> new
+    file_renames = {}  # current -> new
+    unmapped_counter = {}
+
+    for current, refs in usage.items():
+        original = to_original(current)
+        ext = Path(current).suffix
+        unique_slugs = {s for s, _ in refs}
+
+        if len(unique_slugs) > 1:
+            new = original
+            file_renames[current] = new
+            for slug, _kind in refs:
+                post_renames[(slug, current)] = new
+            continue
+
+        for slug, kind in refs:
             key = (slug, current)
             if key in post_renames:
                 continue
-            original = to_original(current)
-            desc = content_descriptions.get((original, slug))
-            if desc:
-                new = f"{slug}-{desc}{ext}"
+            if kind == "featured":
+                new = f"{slug}-cover{ext}"
             else:
-                print(
-                    f"WARNING: no description for content image {original} in {slug}"
-                )
-                unmapped_counter[slug] = unmapped_counter.get(slug, 0) + 1
-                new = f"{slug}-image-{unmapped_counter[slug]}{ext}"
+                desc = content_descriptions.get((original, slug))
+                if desc:
+                    new = f"{slug}-{desc}{ext}"
+                else:
+                    print(
+                        f"WARNING: no description for content image {original} in {slug}"
+                    )
+                    unmapped_counter[slug] = unmapped_counter.get(slug, 0) + 1
+                    new = f"{slug}-image-{unmapped_counter[slug]}{ext}"
             post_renames[key] = new
             file_renames.setdefault(current, new)
 
-    # Move files to their new names. shutil.move handles same-name no-ops on
-    # most platforms; we guard explicitly to keep behavior portable.
     moved = 0
     for current, new in sorted(file_renames.items()):
-        src = images_dir / current
-        dst = images_dir / new
         if current == new:
             continue
+        src = images_dir / current
+        dst = images_dir / new
         if not src.exists():
-            # File was already renamed in a previous run, or never copied.
             continue
         if dst.exists():
             src.unlink()
-        else:
-            shutil.move(str(src), str(dst))
-            moved += 1
+            continue
+        shutil.move(str(src), str(dst))
+        moved += 1
         print(f"  {current} -> {new}")
 
     # Update markdown files
