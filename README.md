@@ -37,7 +37,7 @@ Open the unzipped folder in Claude Code (`claude` in the folder, or via the Clau
 New conversion - my-site
 ```
 
-Claude Code will read the project's `CLAUDE.md`, ask you a few questions (your old domain, who each author is), fill in the config, and run the conversion. Output lands in `projects/my-site/output/`:
+Claude Code will read the project's `AGENTS.md`, ask you a few questions (your old domain, who each author is), fill in the config, and run the conversion. Output lands in `projects/my-site/output/`:
 
 ```
 output/
